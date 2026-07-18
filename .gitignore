@@ -1,0 +1,33 @@
+# Target build and compilation folders
+target/
+bin/
+*.class
+*.jar
+*.war
+*.ear
+
+# Python virtual environments and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# Database files and logs
+*.db
+*.log
+local.rules
+
+# IDE settings and system clutter
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+Thumbs.db
