@@ -2,17 +2,17 @@ import time
 import subprocess
 import requests
 
-# The URL of our team's Java Spring Boot backend server
-API_URL = "http://localhost:8080/api/threats"
+# UPDATED: Pointing directly to the backend's verified status query parameter
+API_URL = "http://localhost:8080/api/threats?status=VERIFIED"
 
-# Keep track of IPs we already blocked so we don't repeat work
+# Track IPs we already blocked so we don't repeat work
 blocked_ips = set()
 
 # Path to the local file where Snort looks for custom rules
 SNORT_RULES_FILE = "local.rules"
 
 def get_verified_threats():
-    """Fetches the list of verified threat IPs from the Java API."""
+    """Fetches the pre-filtered list of verified threat IPs from the Java API."""
     try:
         print("[*] Checking backend for new verified threats...")
         response = requests.get(API_URL, timeout=5)
@@ -41,11 +41,9 @@ def block_in_firewall(ip_address):
 def add_to_snort_rules(ip_address, threat_id):
     """Appends a custom block rule for Snort IDS so it flags traffic from this IP."""
     try:
-        # Create a standard Snort rule format
-        # drop ip <malicious_ip> any -> any any (msg:"ThreatLedger Blocked IP"; sid:<unique_id>; rev:1;)
+        # Standard Snort rule format matching the backend ID indices
         snort_rule = f'drop ip {ip_address} any -> any any (msg:"ThreatLedger Blocked Traffic"; sid:{2000000 + threat_id}; rev:1;)\n'
         
-        # Open our local rules file and append the new rule text
         with open(SNORT_RULES_FILE, "a") as file:
             file.write(snort_rule)
             
@@ -61,23 +59,19 @@ def main_loop():
     print("==================================================")
     
     while True:
+        # The backend now returns ONLY verified threats, so we don't need to manually check status == "VERIFIED"
         threat_list = get_verified_threats()
         
         for item in threat_list:
-            status = item.get("consensusStatus")
             ip = item.get("indicatorValue")
             data_type = item.get("indicatorType")
             threat_id = item.get("indicatorId", 0)
             
-            # Check for verified IPs we haven't handled yet
-            if status == "VERIFIED" and data_type == "IP" and ip not in blocked_ips:
-                # Run firewall block
+            # Make sure it's an IP address type and we haven't blocked it yet
+            if data_type == "IP" and ip and ip not in blocked_ips:
                 fw_success = block_in_firewall(ip)
-                
-                # Run Snort block
                 snort_success = add_to_snort_rules(ip, threat_id)
                 
-                # If both work, mark it as done so we don't repeat it
                 if fw_success and snort_success:
                     blocked_ips.add(ip)
         
