@@ -1,0 +1,59 @@
+### Install the "REST Client" extension in VS Code, then click "Send Request" above each block.
+@baseUrl = http://localhost:8080/api/threats
+
+### 1. Submit a new threat (run scripts/find_nonce.py first to get a valid nonce)
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "indicatorValue": "198.51.100.42",
+  "indicatorType": "IP",
+  "threatDescription": "Brute force attempts detected on SSH port 22.",
+  "submittedByNode": "NODE-NODE-772A",
+  "proofOfWorkNonce": 0
+}
+
+### 2. Get all threats
+GET {{baseUrl}}
+
+### 3. Get only VERIFIED threats (what Member 3's Python agent will call)
+GET {{baseUrl}}?status=VERIFIED
+
+### 4. Get a single threat by id
+GET {{baseUrl}}/1
+
+### 5. Cast votes until it crosses the consensus threshold (min-votes=3, threshold=70%)
+POST {{baseUrl}}/1/vote
+Content-Type: application/json
+
+{
+  "votingNode": "NODE-BETA-001",
+  "voteValue": true
+}
+
+###
+POST {{baseUrl}}/1/vote
+Content-Type: application/json
+
+{
+  "votingNode": "NODE-GAMMA-002",
+  "voteValue": true
+}
+
+###
+POST {{baseUrl}}/1/vote
+Content-Type: application/json
+
+{
+  "votingNode": "NODE-DELTA-003",
+  "voteValue": true
+}
+
+### 6. Try voting twice from the same node - should get a 400 error
+POST {{baseUrl}}/1/vote
+Content-Type: application/json
+
+{
+  "votingNode": "NODE-BETA-001",
+  "voteValue": true
+}
