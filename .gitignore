@@ -1,33 +1,54 @@
-# Target build and compilation folders
-target/
-bin/
-*.class
-*.jar
-*.war
-*.ear
+# =========================================================================
+# ThreatLedger Master GitIgnore Configuration
+# =========================================================================
 
-# Python virtual environments and caches
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
+# --- Java / Spring Boot / Maven (Member 1) ---
+**/target/
+**.class
+**.jar
+**.war
+**.ear
+*.lst
+*.mkv
+.mvn/
+*.versionsBackup
+
+# --- Python / Automation Engine (Member 3 - Your Track) ---
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/.pytest_cache/
+**/.venv/
 venv/
 ENV/
+env/
+.env
+.venv
 
-# Database files and logs
+# --- Local Databases & RDBMS Output (Fallbacks) ---
 *.db
-*.log
-local.rules
+*.sqlite
+data/
+# Ignore local MySQL/H2 runtime lock files
+*.mv.db
+*.trace.db
 
-# IDE settings and system clutter
+# --- IDEs & Editors Configuration Files ---
 .idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
 .vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.swp
+*.sublime-workspace
+*.sublime-project
+
+# --- System Operating Logs ---
 .DS_Store
 Thumbs.db
+log/
+*.log
+local.rules.bak
