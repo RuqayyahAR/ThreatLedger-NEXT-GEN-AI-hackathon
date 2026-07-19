@@ -263,16 +263,15 @@
 <footer>ThreatLedger — decentralized threat intelligence, verified by network consensus. Demo data, no live nodes connected.</footer>
 
 <script>
-// ----- Mock data matching the team's JSON contract -----
-let indicatorSeq = 1029;
-let feed = [
-  { indicatorId:1024, indicatorValue:"198.51.100.42", indicatorType:"IP", threatDescription:"Brute force attempts detected on SSH port 22.", submittedByNode:"NODE-772A", consensusStatus:"VERIFIED", confidenceScore:88.5, totalVotesCast:42, createdAt:"2026-07-19T14:15:00Z" },
-  { indicatorId:1025, indicatorValue:"malicious-updates[.]net", indicatorType:"DOMAIN", threatDescription:"Phishing kit hosting, mimics banking login page.", submittedByNode:"NODE-19DB", consensusStatus:"VERIFIED", confidenceScore:94.2, totalVotesCast:61, createdAt:"2026-07-19T13:47:00Z" },
-  { indicatorId:1026, indicatorValue:"a3f9c1e8b2d4...44fa", indicatorType:"HASH", threatDescription:"SHA-256 of dropper payload, spawns reverse shell.", submittedByNode:"NODE-5C0E", consensusStatus:"PENDING", confidenceScore:52.0, totalVotesCast:11, createdAt:"2026-07-19T15:02:00Z" },
-  { indicatorId:1027, indicatorValue:"203.0.113.77", indicatorType:"IP", threatDescription:"Repeated port scans across sequential subnets.", submittedByNode:"NODE-8823", consensusStatus:"PENDING", confidenceScore:61.0, totalVotesCast:18, createdAt:"2026-07-19T15:09:00Z" },
-  { indicatorId:1028, indicatorValue:"free-gift-cards[.]top", indicatorType:"DOMAIN", threatDescription:"Reported by one node, contradicted by majority logs.", submittedByNode:"NODE-33F1", consensusStatus:"REJECTED", confidenceScore:18.0, totalVotesCast:29, createdAt:"2026-07-19T12:30:00Z" }
-];
+// ----- API Endpoints Setup -----
+const API_BASE_URL = "http://localhost:8080/api/threats";
 
+// Internal state tracking array
+let feed = [];
+
+/**
+ * Calculates relative timestamp display from ISO dates
+ */
 function relTime(iso){
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs/60000);
@@ -283,9 +282,14 @@ function relTime(iso){
   return Math.floor(hrs/24) + "d ago";
 }
 
+/**
+ * Renders the live database threat rows directly onto the UI table grid
+ */
 function renderFeed(){
   const body = document.getElementById('feedBody');
+  // Sort by recent timestamp entry profiles
   const sorted = [...feed].sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+  
   body.innerHTML = sorted.map(t => `
     <tr>
       <td>
@@ -303,22 +307,45 @@ function renderFeed(){
     </tr>
   `).join('') || `<tr class="empty-row"><td colspan="5">No threats reported yet. Submit the first indicator.</td></tr>`;
 }
-renderFeed();
 
-// ----- Ticker -----
+/**
+ * Updates the top flashing marquee information ribbon
+ */
 function buildTicker(){
   const items = feed.map(t => `<b>${t.indicatorValue}</b> — ${t.consensusStatus} (${t.confidenceScore.toFixed(0)}% consensus)`);
   document.getElementById('ticker').innerHTML = items.join(' &nbsp;•&nbsp; ');
 }
-buildTicker();
 
-// ----- Clock -----
+// ----- Live API Connection Methods -----
+
+/**
+ * Fetches the active consensus threat records from the Spring Boot API
+ */
+async function fetchLiveThreatFeed() {
+  try {
+    const response = await fetch(API_BASE_URL);
+    if (response.ok) {
+      feed = await response.json();
+      renderFeed();
+      buildTicker();
+    }
+  } catch (error) {
+    console.error("[!] Connection error pulling API data layer:", error);
+  }
+}
+
+// Initial pull execution on page startup
+fetchLiveThreatFeed();
+// Continuously refresh dashboard grid elements every 5 seconds to match backend state updates
+setInterval(fetchLiveThreatFeed, 5000);
+
+// ----- Synchronized Clock -----
 function tickClock(){
   document.getElementById('clock').textContent = new Date().toUTCString().slice(17,25) + ' UTC';
 }
 tickClock(); setInterval(tickClock, 1000);
 
-// ----- Submission + simulated Proof-of-Work mining -----
+// ----- Front-End Cryptographic Proof-of-Work Engine -----
 const submitBtn = document.getElementById('submitBtn');
 const powBox = document.getElementById('powBox');
 const powHash = document.getElementById('powHash');
@@ -332,83 +359,99 @@ function randHex(len){
   return s;
 }
 
-submitBtn.addEventListener('click', () => {
+/**
+ * Native SHA-256 function utilizing browser web crypto APIs
+ */
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Handles the submission form and brute-forces a valid PoW token matching backend rules
+ */
+submitBtn.addEventListener('click', async () => {
   const value = document.getElementById('indicatorValue').value.trim();
   const type = document.getElementById('indicatorType').value;
   const desc = document.getElementById('threatDescription').value.trim() || 'No description provided.';
+  const staticNodeID = "NODE-4F21-QC"; // Static ID for your UI panel node
+  const networkDifficulty = 4; // Target leading zero match parameter matching application.properties
+  const targetPrefix = "0".repeat(networkDifficulty);
+
   if(!value){ document.getElementById('indicatorValue').focus(); return; }
 
+  // Lock UI form buttons from multiple click anomalies
   submitBtn.disabled = true;
   submitBtn.textContent = 'Mining proof of work…';
   powBox.classList.add('active');
-  powStatus.textContent = 'mining…';
+  powStatus.textContent = 'solving hash puzzle…';
 
   let nonce = 0;
-  const mineInterval = setInterval(() => {
-    nonce += Math.floor(Math.random()*900)+100;
-    powNonce.textContent = 'nonce: ' + nonce;
+  let finalHash = "";
+  
+  // Visual ticker updates to simulate active local mining mechanics
+  const visualInterval = setInterval(() => {
+    powNonce.textContent = 'nonce: ' + (nonce + Math.floor(Math.random() * 100));
     powHash.innerHTML = randHex(56);
-  }, 70);
+  }, 60);
 
-  const targetTicks = 14 + Math.floor(Math.random()*6);
-  let ticks = 0;
-  const check = setInterval(() => {
-    ticks++;
-    if(ticks >= targetTicks){
-      clearInterval(mineInterval);
-      clearInterval(check);
-      const finalHash = '0000' + randHex(52);
-      powHash.innerHTML = '<span class="zeros">0000</span>' + finalHash.slice(4);
-      powStatus.textContent = 'puzzle solved — submitting to network';
+  // Synchronous background cryptographic processing execution
+  const startTime = Date.now();
+  while (true) {
+    // Formats string precisely to match the Spring Boot validation structure: (Value + NodeID + Nonce)
+    const candidateString = `${value}${staticNodeID}${nonce}`;
+    finalHash = await sha256(candidateString);
+    
+    if (finalHash.startsWith(targetPrefix)) {
+      break;
+    }
+    nonce++;
+  }
+  
+  // Stop interface visual tickers and print verified outputs
+  clearInterval(visualInterval);
+  powNonce.textContent = 'nonce: ' + nonce;
+  powHash.innerHTML = `<span class="zeros">${targetPrefix}</span>` + finalHash.slice(networkDifficulty);
+  powStatus.textContent = 'puzzle solved — forwarding payload to endpoint';
 
-      setTimeout(() => {
-        indicatorSeq++;
-        feed.push({
-          indicatorId: indicatorSeq,
+  // Issue the live POST request containing the computed structural contract data to the database
+  setTimeout(async () => {
+    try {
+      const response = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           indicatorValue: value,
           indicatorType: type,
           threatDescription: desc,
-          submittedByNode: 'NODE-4F21-QC',
-          consensusStatus: 'PENDING',
-          confidenceScore: Math.floor(Math.random()*20)+15,
-          totalVotesCast: Math.floor(Math.random()*6)+1,
-          createdAt: new Date().toISOString()
-        });
-        renderFeed();
-        buildTicker();
-        powBox.classList.remove('active');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit to network';
+          submittedByNode: staticNodeID,
+          proofOfWorkNonce: nonce
+        })
+      });
+
+      if (response.ok) {
+        // Clear input form fields upon successful creation status feedback
         document.getElementById('indicatorValue').value = '';
         document.getElementById('threatDescription').value = '';
-
-        // Simulate peer votes arriving over the next few seconds
-        simulateConsensus(indicatorSeq);
-      }, 700);
+        // Pull down the fresh dataset state immediately
+        await fetchLiveThreatFeed();
+      } else {
+        const errorMsg = await response.text();
+        alert("[!] Server Rejected Submission: " + errorMsg);
+      }
+    } catch (err) {
+      console.error("[!] Network failure pushing threat item:", err);
+      alert("[!] Could not connect to backend server api.");
+    } finally {
+      // Re-enable interactive elements
+      powBox.classList.remove('active');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit to network';
     }
-  }, 70);
+  }, 600);
 });
-
-function simulateConsensus(id){
-  let rounds = 0;
-  const vote = setInterval(() => {
-    rounds++;
-    const t = feed.find(f => f.indicatorId === id);
-    if(!t){ clearInterval(vote); return; }
-    t.totalVotesCast += Math.floor(Math.random()*5)+2;
-    t.confidenceScore = Math.min(99, t.confidenceScore + Math.floor(Math.random()*22)+8);
-    if(t.confidenceScore >= 70){
-      t.consensusStatus = 'VERIFIED';
-      clearInterval(vote);
-    } else if(rounds >= 5 && t.confidenceScore < 40){
-      t.consensusStatus = 'REJECTED';
-      clearInterval(vote);
-    }
-    renderFeed();
-    buildTicker();
-    if(rounds >= 6) clearInterval(vote);
-  }, 1400);
-}
 </script>
 </body>
 </html>
