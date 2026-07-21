@@ -264,7 +264,7 @@
 
 <script>
 // ----- API Endpoints Setup -----
-const API_BASE_URL = "http://localhost:8080/api/threats";
+const API_BASE_URL = "https://threatledger-next-gen-ai-hackathon.onrender.com/api/threats";
 
 // Internal state tracking array
 let feed = [];
@@ -509,7 +509,7 @@ async function sendTLMessage() {
     container.scrollTop = container.scrollHeight;
 
     try {
-        const res = await fetch('http://localhost:8080/api/chat', {
+        const res = await fetch('https://threatledger-next-gen-ai-hackathon.onrender.com/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text })
