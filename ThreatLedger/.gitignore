@@ -1,0 +1,54 @@
+# =========================================================================
+# ThreatLedger Master GitIgnore Configuration
+# =========================================================================
+
+# --- Java / Spring Boot / Maven (Member 1) ---
+**/target/
+**.class
+**.jar
+**.war
+**.ear
+*.lst
+*.mkv
+.mvn/
+*.versionsBackup
+
+# --- Python / Automation Engine (Member 3 - Your Track) ---
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/.pytest_cache/
+**/.venv/
+venv/
+ENV/
+env/
+.env
+.venv
+
+# --- Local Databases & RDBMS Output (Fallbacks) ---
+*.db
+*.sqlite
+data/
+# Ignore local MySQL/H2 runtime lock files
+*.mv.db
+*.trace.db
+
+# --- IDEs & Editors Configuration Files ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# --- System Operating Logs ---
+.DS_Store
+Thumbs.db
+log/
+*.log
+local.rules.bak

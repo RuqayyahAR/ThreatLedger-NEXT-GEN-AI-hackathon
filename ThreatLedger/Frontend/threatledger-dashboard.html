@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreatLedger — Analyst Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E13;
+    --panel:#111820;
+    --panel-2:#0D1319;
+    --border:#1E2932;
+    --text:#DCE6EC;
+    --muted:#66798A;
+    --muted-2:#455563;
+    --verified:#37D488;
+    --pending:#F0A83C;
+    --rejected:#E85B4E;
+    --consensus:#4FA3D1;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(79,163,209,0.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--consensus); color:#04141c;}
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 28px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand-mark{
+    font-family:var(--display); font-weight:700; font-size:20px; letter-spacing:0.5px;
+    color:var(--text);
+  }
+  .brand-mark span{color:var(--consensus);}
+  .brand-tag{font-size:11px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase;}
+  .node-status{display:flex; align-items:center; gap:18px; font-size:12px; color:var(--muted);}
+  .node-id{color:var(--text);}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--verified); display:inline-block; margin-right:6px; box-shadow:0 0 8px var(--verified); animation:pulse 2.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.35;}}
+
+  /* ---------- Ticker ---------- */
+  .ticker-wrap{
+    border-bottom:1px solid var(--border);
+    background:var(--panel-2);
+    overflow:hidden; white-space:nowrap;
+    padding:7px 0;
+  }
+  .ticker{
+    display:inline-block; padding-left:100%;
+    animation:scroll 32s linear infinite;
+    font-size:11.5px; color:var(--muted-2); letter-spacing:0.3px;
+  }
+  .ticker b{color:var(--consensus); font-weight:500;}
+  @keyframes scroll{ from{transform:translateX(0);} to{transform:translateX(-100%);} }
+
+  main{
+    max-width:1320px; margin:0 auto;
+    padding:26px 28px 60px;
+  }
+
+  /* ---------- Stat row ---------- */
+  .stats{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px;
+    margin-bottom:24px;
+  }
+  .stat{
+    background:var(--panel); border:1px solid var(--border); border-radius:6px;
+    padding:16px 18px;
+  }
+  .stat-label{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:1.2px; margin-bottom:8px;}
+  .stat-value{font-family:var(--display); font-size:26px; font-weight:600; color:var(--text);}
+  .stat-value.consensus{color:var(--consensus);}
+  .stat-value.verified{color:var(--verified);}
+  .stat-sub{font-size:11px; color:var(--muted-2); margin-top:4px;}
+
+  /* ---------- Layout grid ---------- */
+  .grid{display:grid; grid-template-columns:360px 1fr; gap:18px;}
+  @media (max-width: 880px){ .grid{grid-template-columns:1fr;} .stats{grid-template-columns:repeat(2,1fr);} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:6px;
+    padding:20px;
+  }
+  .panel-title{
+    font-family:var(--display); font-size:14px; font-weight:600;
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:16px; color:var(--text);
+  }
+  .panel-title small{font-family:var(--mono); font-size:10px; color:var(--muted); font-weight:400; letter-spacing:0.5px;}
+
+  /* ---------- Form ---------- */
+  label{display:block; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:14px 0 6px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text], select, textarea{
+    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    font-family:var(--mono); font-size:13px; padding:10px 11px; border-radius:4px; outline:none;
+    transition:border-color .15s;
+  }
+  input[type=text]:focus, select:focus, textarea:focus{border-color:var(--consensus);}
+  textarea{resize:vertical; min-height:56px;}
+  .field-hint{font-size:10px; color:var(--muted-2); margin-top:5px;}
+
+  .submit-btn{
+    margin-top:20px; width:100%; padding:12px; border-radius:4px; border:1px solid var(--consensus);
+    background:rgba(79,163,209,0.10); color:var(--consensus); font-family:var(--mono); font-weight:600;
+    font-size:12.5px; letter-spacing:1px; text-transform:uppercase; cursor:pointer;
+    transition:background .15s;
+  }
+  .submit-btn:hover{background:rgba(79,163,209,0.2);}
+  .submit-btn:disabled{opacity:0.55; cursor:wait;}
+
+  /* PoW mining readout — signature element */
+  .pow-box{
+    margin-top:14px; background:var(--panel-2); border:1px solid var(--border); border-radius:4px;
+    padding:10px 12px; font-size:11px; display:none;
+  }
+  .pow-box.active{display:block;}
+  .pow-row{display:flex; justify-content:space-between; color:var(--muted); margin-bottom:6px;}
+  .pow-hash{color:var(--consensus); letter-spacing:0.5px; word-break:break-all;}
+  .pow-hash .zeros{color:var(--verified);}
+  .pow-status{margin-top:6px; color:var(--muted-2); font-size:10.5px;}
+
+  /* ---------- Feed table ---------- */
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{
+    text-align:left; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;
+    font-weight:500; padding:0 10px 10px; border-bottom:1px solid var(--border);
+  }
+  tbody td{padding:12px 10px; border-bottom:1px solid var(--border); vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr{transition:background .15s;}
+  tbody tr:hover{background:rgba(255,255,255,0.015);}
+  .ioc{color:var(--text); font-weight:500;}
+  .ioc-type{font-size:9.5px; color:var(--muted-2); text-transform:uppercase; margin-left:6px; border:1px solid var(--border); padding:1px 5px; border-radius:3px;}
+  .desc{color:var(--muted); font-size:11.5px; max-width:230px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .node-tag{color:var(--muted-2); font-size:11px;}
+
+  .badge{font-size:9.5px; text-transform:uppercase; letter-spacing:0.6px; padding:3px 7px; border-radius:3px; font-weight:600;}
+  .badge.VERIFIED{background:rgba(55,212,136,0.12); color:var(--verified); border:1px solid rgba(55,212,136,0.3);}
+  .badge.PENDING{background:rgba(240,168,60,0.12); color:var(--pending); border:1px solid rgba(240,168,60,0.3);}
+  .badge.REJECTED{background:rgba(232,91,78,0.12); color:var(--rejected); border:1px solid rgba(232,91,78,0.3);}
+
+  .bar-track{width:100px; height:5px; background:var(--panel-2); border-radius:3px; overflow:hidden; border:1px solid var(--border);}
+  .bar-fill{height:100%; border-radius:3px; transition:width .6s ease;}
+  .bar-fill.VERIFIED{background:var(--verified);}
+  .bar-fill.PENDING{background:var(--pending);}
+  .bar-fill.REJECTED{background:var(--rejected);}
+  .bar-label{font-size:10.5px; color:var(--muted); margin-top:4px;}
+
+  .timestamp{color:var(--muted-2); font-size:11px;}
+  .empty-row td{text-align:center; color:var(--muted-2); padding:30px 10px; font-size:12px;}
+
+  footer{
+    max-width:1320px; margin:0 auto; padding:0 28px 40px;
+    color:var(--muted-2); font-size:10.5px; letter-spacing:0.3px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">Threat<span>Ledger</span></div>
+    <div class="brand-tag">Analyst Console</div>
+  </div>
+  <div class="node-status">
+    <div><span class="dot"></span>NODE <span class="node-id">NODE-4F21-QC</span> ONLINE</div>
+    <div id="clock">—</div>
+  </div>
+</header>
+
+<div class="ticker-wrap">
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<main>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Active Peer Nodes</div>
+      <div class="stat-value">128</div>
+      <div class="stat-sub">+4 in last hour</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Verified — 24h</div>
+      <div class="stat-value verified">37</div>
+      <div class="stat-sub">across IP / DOMAIN / HASH</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Network Consensus Threshold</div>
+      <div class="stat-value consensus">70%</div>
+      <div class="stat-sub">positive votes to verify</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">PoW Difficulty</div>
+      <div class="stat-value">0x0000</div>
+      <div class="stat-sub">4 leading zero bits</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Submission panel -->
+    <div class="panel">
+      <div class="panel-title">Report Indicator <small>POST /api/threats</small></div>
+
+      <label for="indicatorType">Indicator type</label>
+      <select id="indicatorType">
+        <option value="IP">IP address</option>
+        <option value="DOMAIN">Domain</option>
+        <option value="HASH">File hash</option>
+      </select>
+
+      <label for="indicatorValue">Indicator value</label>
+      <input type="text" id="indicatorValue" placeholder="198.51.100.42">
+
+      <label for="threatDescription">Description</label>
+      <textarea id="threatDescription" placeholder="Brute force attempts detected on SSH port 22."></textarea>
+      <div class="field-hint">Visible to peer nodes for validation.</div>
+
+      <button class="submit-btn" id="submitBtn">Submit to network</button>
+
+      <div class="pow-box" id="powBox">
+        <div class="pow-row"><span>Proof of Work</span><span id="powNonce">nonce: 0</span></div>
+        <div class="pow-hash" id="powHash">—</div>
+        <div class="pow-status" id="powStatus">mining…</div>
+      </div>
+    </div>
+
+    <!-- Feed panel -->
+    <div class="panel">
+      <div class="panel-title">Live Threat Feed <small>consensusStatus · confidenceScore</small></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Indicator</th>
+            <th>Reported by</th>
+            <th>Status</th>
+            <th>Confidence</th>
+            <th>Reported</th>
+          </tr>
+        </thead>
+        <tbody id="feedBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>ThreatLedger — decentralized threat intelligence, verified by network consensus. Demo data, no live nodes connected.</footer>
+
+<script>
+// ----- API Endpoints Setup -----
+const API_BASE_URL = "http://localhost:8080/api/threats";
+
+// Internal state tracking array
+let feed = [];
+
+/**
+ * Calculates relative timestamp display from ISO dates
+ */
+function relTime(iso){
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs/60000);
+  if(mins < 1) return "just now";
+  if(mins < 60) return mins + "m ago";
+  const hrs = Math.floor(mins/60);
+  if(hrs < 24) return hrs + "h ago";
+  return Math.floor(hrs/24) + "d ago";
+}
+
+/**
+ * Renders the live database threat rows directly onto the UI table grid
+ */
+function renderFeed(){
+  const body = document.getElementById('feedBody');
+  // Sort by recent timestamp entry profiles
+  const sorted = [...feed].sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+  
+  body.innerHTML = sorted.map(t => `
+    <tr>
+      <td>
+        <span class="ioc">${t.indicatorValue}</span>
+        <span class="ioc-type">${t.indicatorType}</span>
+        <div class="desc">${t.threatDescription}</div>
+      </td>
+      <td class="node-tag">${t.submittedByNode}</td>
+      <td><span class="badge ${t.consensusStatus}">${t.consensusStatus}</span></td>
+      <td>
+        <div class="bar-track"><div class="bar-fill ${t.consensusStatus}" style="width:${t.confidenceScore}%"></div></div>
+        <div class="bar-label">${t.confidenceScore.toFixed(1)}% · ${t.totalVotesCast} votes</div>
+      </td>
+      <td class="timestamp">${relTime(t.createdAt)}</td>
+    </tr>
+  `).join('') || `<tr class="empty-row"><td colspan="5">No threats reported yet. Submit the first indicator.</td></tr>`;
+}
+
+/**
+ * Updates the top flashing marquee information ribbon
+ */
+function buildTicker(){
+  const items = feed.map(t => `<b>${t.indicatorValue}</b> — ${t.consensusStatus} (${t.confidenceScore.toFixed(0)}% consensus)`);
+  document.getElementById('ticker').innerHTML = items.join(' &nbsp;•&nbsp; ');
+}
+
+// ----- Live API Connection Methods -----
+
+/**
+ * Fetches the active consensus threat records from the Spring Boot API
+ */
+async function fetchLiveThreatFeed() {
+  try {
+    const response = await fetch(API_BASE_URL);
+    if (response.ok) {
+      feed = await response.json();
+      renderFeed();
+      buildTicker();
+    }
+  } catch (error) {
+    console.error("[!] Connection error pulling API data layer:", error);
+  }
+}
+
+// Initial pull execution on page startup
+fetchLiveThreatFeed();
+// Continuously refresh dashboard grid elements every 5 seconds to match backend state updates
+setInterval(fetchLiveThreatFeed, 5000);
+
+// ----- Synchronized Clock -----
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toUTCString().slice(17,25) + ' UTC';
+}
+tickClock(); setInterval(tickClock, 1000);
+
+// ----- Front-End Cryptographic Proof-of-Work Engine -----
+const submitBtn = document.getElementById('submitBtn');
+const powBox = document.getElementById('powBox');
+const powHash = document.getElementById('powHash');
+const powNonce = document.getElementById('powNonce');
+const powStatus = document.getElementById('powStatus');
+
+function randHex(len){
+  let s = '';
+  const chars = '0123456789abcdef';
+  for(let i=0;i<len;i++) s += chars[Math.floor(Math.random()*16)];
+  return s;
+}
+
+/**
+ * Native SHA-256 function utilizing browser web crypto APIs
+ */
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Handles the submission form and brute-forces a valid PoW token matching backend rules
+ */
+submitBtn.addEventListener('click', async () => {
+  const value = document.getElementById('indicatorValue').value.trim();
+  const type = document.getElementById('indicatorType').value;
+  const desc = document.getElementById('threatDescription').value.trim() || 'No description provided.';
+  const staticNodeID = "NODE-4F21-QC"; // Static ID for your UI panel node
+  const networkDifficulty = 4; // Target leading zero match parameter matching application.properties
+  const targetPrefix = "0".repeat(networkDifficulty);
+
+  if(!value){ document.getElementById('indicatorValue').focus(); return; }
+
+  // Lock UI form buttons from multiple click anomalies
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Mining proof of work…';
+  powBox.classList.add('active');
+  powStatus.textContent = 'solving hash puzzle…';
+
+  let nonce = 0;
+  let finalHash = "";
+  
+  // Visual ticker updates to simulate active local mining mechanics
+  const visualInterval = setInterval(() => {
+    powNonce.textContent = 'nonce: ' + (nonce + Math.floor(Math.random() * 100));
+    powHash.innerHTML = randHex(56);
+  }, 60);
+
+  // Synchronous background cryptographic processing execution
+  const startTime = Date.now();
+  while (true) {
+    // Matches backend: SHA-256(indicatorValue + nonce)
+    const candidateString = `${value}${nonce}`;
+    finalHash = await sha256(candidateString);
+    
+    if (finalHash.startsWith(targetPrefix)) {
+      break;
+    }
+    nonce++;
+  }
+  
+  // Stop interface visual tickers and print verified outputs
+  clearInterval(visualInterval);
+  powNonce.textContent = 'nonce: ' + nonce;
+  powHash.innerHTML = `<span class="zeros">${targetPrefix}</span>` + finalHash.slice(networkDifficulty);
+  powStatus.textContent = 'puzzle solved — forwarding payload to endpoint';
+
+  // Issue the live POST request containing the computed structural contract data to the database
+  setTimeout(async () => {
+    try {
+      const response = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          indicatorValue: value,
+          indicatorType: type,
+          threatDescription: desc,
+          submittedByNode: staticNodeID,
+          proofOfWorkNonce: nonce
+        })
+      });
+
+      if (response.ok) {
+        // Clear input form fields upon successful creation status feedback
+        document.getElementById('indicatorValue').value = '';
+        document.getElementById('threatDescription').value = '';
+        // Pull down the fresh dataset state immediately
+        await fetchLiveThreatFeed();
+      } else {
+        const errorMsg = await response.text();
+        alert("[!] Server Rejected Submission: " + errorMsg);
+      }
+    } catch (err) {
+      console.error("[!] Network failure pushing threat item:", err);
+      alert("[!] Could not connect to backend server api.");
+    } finally {
+      // Re-enable interactive elements
+      powBox.classList.remove('active');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit to network';
+    }
+  }, 600);
+});
+</script>
+<!-- ThreatLedger AI Assistant Floating Widget -->
+<div id="tl-chat-widget" style="position: fixed; bottom: 25px; right: 25px; z-index: 9999; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    
+    <!-- Floating Trigger Button -->
+    <button id="tl-chat-btn" onclick="toggleTLChat()" style="background: #00e676; color: #0a0a12; border: none; padding: 12px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3);">
+        🤖 Threat AI Assistant
+    </button>
+
+    <!-- Chat Window Container -->
+    <div id="tl-chat-box" style="display: none; flex-direction: column; width: 350px; height: 450px; background: #12121c; border: 1px solid #00e676; border-radius: 12px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.8);">
+        
+        <!-- Header -->
+        <div style="background: #1e1e2f; padding: 12px 15px; border-bottom: 1px solid #2a2a3d; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #00e676; font-weight: bold; font-size: 14px;">🛡️ ThreatLedger SOC Assistant</span>
+            <button onclick="toggleTLChat()" style="background: none; border: none; color: #888; cursor: pointer; font-size: 16px;">✕</button>
+        </div>
+
+        <!-- Conversation Stream -->
+        <div id="tl-chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; color: #d1d1e0; font-size: 13px; line-height: 1.5;">
+            <div style="margin-bottom: 12px; background: #1a1a2e; padding: 10px; border-radius: 8px; border-left: 3px solid #00e676;">
+                <strong>Threat AI:</strong> Welcome to ThreatLedger SOC. Ask me about submitted threat indicators, consensus requirements, or edge firewall rules!
+            </div>
+        </div>
+
+        <!-- Input Bar -->
+        <div style="padding: 10px; background: #1e1e2f; display: flex; gap: 8px;">
+            <input type="text" id="tl-chat-input" placeholder="Type a message..." style="flex: 1; background: #0a0a12; border: 1px solid #333; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none;" onkeypress="if(event.key === 'Enter') sendTLMessage()">
+            <button onclick="sendTLMessage()" style="background: #00e676; color: #0a0a12; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleTLChat() {
+    const box = document.getElementById('tl-chat-box');
+    box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function sendTLMessage() {
+    const input = document.getElementById('tl-chat-input');
+    const container = document.getElementById('tl-chat-messages');
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    // Display User Query
+    container.innerHTML += `<div style="margin-bottom: 12px; text-align: right;"><span style="background: #00e676; color: #0a0a12; padding: 8px 12px; border-radius: 8px; display: inline-block; font-weight: 500;">${text}</span></div>`;
+    input.value = '';
+    container.scrollTop = container.scrollHeight;
+
+    // Display Thinking Indicator
+    const loadingId = 'loading-' + Date.now();
+    container.innerHTML += `<div id="${loadingId}" style="margin-bottom: 12px; color: #888; font-style: italic;">Threat AI is analyzing...</div>`;
+    container.scrollTop = container.scrollHeight;
+
+    try {
+        const res = await fetch('http://localhost:8080/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+
+        // Remove loading and append answer
+        document.getElementById(loadingId).remove();
+        container.innerHTML += `<div style="margin-bottom: 12px; background: #1a1a2e; padding: 10px; border-radius: 8px; border-left: 3px solid #00e676;"><strong>Threat AI:</strong> ${data.reply}</div>`;
+        container.scrollTop = container.scrollHeight;
+    } catch (err) {
+        document.getElementById(loadingId).remove();
+        container.innerHTML += `<div style="margin-bottom: 12px; background: #2e1a1a; padding: 10px; border-radius: 8px; border-left: 3px solid #ff5252; color: #ff8080;"><strong>Error:</strong> Failed to communicate with ThreatLedger backend.</div>`;
+    }
+}
+</script>
+</body>
+</html>

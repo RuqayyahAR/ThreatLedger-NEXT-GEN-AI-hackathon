@@ -1,0 +1,7 @@
+# ThreatLedger automation-layer dependencies
+# Python 3.8+ required (f-strings, dataclasses used across the codebase).
+#
+# Agent.py      -> uses `requests` to poll GET /api/threats?status=VERIFIED
+# mine_nonce.py / Backend/scripts/find_nonce.py -> standard library only (hashlib, sys)
+
+requests==2.32.3
