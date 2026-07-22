@@ -3,8 +3,7 @@ import subprocess
 import requests
 
 # Pointing directly to the backend's pre-filtered verified status query parameter
-API_URL = "http://localhost:8080/api/threats?status=VERIFIED"
-
+API_URL = "https://threatledger-next-gen-ai-hackathon.onrender.com"
 # Track IPs we already blocked so we don't repeat system work
 blocked_ips = set()
 
