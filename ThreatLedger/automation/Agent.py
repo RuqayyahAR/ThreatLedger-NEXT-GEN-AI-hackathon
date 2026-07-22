@@ -1,9 +1,12 @@
+import os
+import sys
 import time
 import subprocess
 import requests
 
 # Pointing directly to the backend's pre-filtered verified status query parameter
-API_URL = "https://threatledger-next-gen-ai-hackathon.onrender.com"
+API_URL = "https://threatledger-next-gen-ai-hackathon.onrender.com/api/threats"
+
 # Track IPs we already blocked so we don't repeat system work
 blocked_ips = set()
 
@@ -26,13 +29,21 @@ def get_verified_threats():
         return []
 
 def block_in_firewall(ip_address):
-    """Executes a system command to drop traffic from the IP using UFW."""
+    """Executes a system command to drop traffic from the IP using UFW (Linux only)."""
+    # Check if running on Windows
+    if os.name == 'nt' or sys.platform.startswith('win'):
+        print(f"[i] Windows OS detected. Skipping UFW firewall command for: {ip_address}")
+        return True
+
     try:
         print(f"[+] Injecting firewall drop rule for: {ip_address}")
         command = ["sudo", "ufw", "deny", "from", ip_address, "to", "any"]
         subprocess.run(command, capture_output=True, text=True, check=True)
         print(f"[✓] Firewall successfully blocked {ip_address}")
         return True
+    except FileNotFoundError:
+        print(f"[✗] UFW firewall utility not found on this system.")
+        return False
     except Exception as e:
         print(f"[✗] Failed to execute firewall command for {ip_address}: {e}")
         return False
@@ -58,7 +69,7 @@ def main_loop():
     print("==================================================")
     
     while True:
-        # Backend returns ONLY verified threats, removing local status checks
+        # Backend returns ONLY verified threats
         threat_list = get_verified_threats()
         
         for item in threat_list:
@@ -71,7 +82,8 @@ def main_loop():
                 fw_success = block_in_firewall(ip)
                 snort_success = add_to_snort_rules(ip, threat_id)
                 
-                if fw_success and snort_success:
+                # Mark as processed in session once attempted
+                if fw_success or snort_success:
                     blocked_ips.add(ip)
         
         print("[*] Sleeping for 10 seconds before next polling cycle...\n")
